@@ -1,0 +1,180 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paga.ai - Kalkulimi i Pagave</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+            background-color: #f4f4f9;
+        }
+        header {
+            background-color: #4CAF50;
+            color: white;
+            padding: 20px;
+        }
+        main {
+            padding: 20px;
+        }
+        input, button, select {
+            margin: 10px;
+            padding: 10px;
+            font-size: 16px;
+        }
+        .results {
+            margin-top: 20px;
+        }
+        footer {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #333;
+            color: white;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Paga.ai</h1>
+        <p>Kalkulo dhe menaxho pagat me lehtësi</p>
+    </header>
+    <main>
+        <h2>Kalkulimi i Pagave</h2>
+        <p>Fut pagën bruto ose neto dhe zgjidh llogaritjen:</p>
+        <input type="number" id="salary" placeholder="Fut pagën këtu">
+        <select id="employmentStatus">
+            <option value="new">Punësuar Rishtazi/Larguar</option>
+            <option value="existing">Punonjës Ekzistues</option>
+            <option value="miner">Minator/Sigurime Suplementare 5%</option>
+            <option value="selfEmployed">Vetëpunësuar Person Fizik</option>
+        </select>
+        <select id="calculationType">
+            <option value="brutoToNeto">Bruto në Neto</option>
+            <option value="netoToBruto">Neto në Bruto</option>
+        </select>
+        <button onclick="calculate()">Kalkulo</button>
+        <div class="results" id="results"></div>
+    </main>
+    <footer>
+        <p>&copy; Paga.ai. Të gjitha të drejtat e rezervuara.</p>
+        <p>Qenani Accounting Office | rqenani@gmail.com | 0683366444</p>
+    </footer>
+    <script>
+        function calculate() {
+            const salary = parseFloat(document.getElementById("salary").value);
+            const type = document.getElementById("calculationType").value;
+            const employmentStatus = document.getElementById("employmentStatus").value;
+
+            if (isNaN(salary) || salary <= 0) {
+                document.getElementById("results").innerHTML = "<p>Ju lutem fusni një shumë të vlefshme!</p>";
+                return;
+            }
+
+            let neto = 0, bruto = 0, companyCost = 0, 
+                socialInsuranceCompany = 0, healthInsuranceCompany = 0, 
+                socialInsuranceEmployee = 0, healthInsuranceEmployee = 0, 
+                supplementalInsuranceEmployee = 0, supplementalInsuranceCompany = 0, TAP = 0;
+
+            const MIN_SALARY = 40000; // Minimum salary for contributions
+            const MAX_SALARY = 176416; // Maximum salary for contributions
+
+            // Adjust salary for contributions based on employment status
+            let contributionSalary = salary;
+            if (employmentStatus === "existing") {
+                contributionSalary = Math.max(MIN_SALARY, Math.min(salary, MAX_SALARY));
+            } else if (employmentStatus === "new" && salary < MIN_SALARY) {
+                contributionSalary = salary; // For new employees, no minimum threshold
+            } else if (employmentStatus === "miner") {
+                contributionSalary = Math.max(MIN_SALARY, Math.min(salary, MAX_SALARY));
+                supplementalInsuranceEmployee = contributionSalary * 0.02; // 2% supplemental for employee
+                supplementalInsuranceCompany = contributionSalary * 0.03; // 3% supplemental for company
+            } else if (employmentStatus === "selfEmployed") {
+                contributionSalary = Math.max(MIN_SALARY, Math.min(salary, MAX_SALARY));
+                socialInsuranceCompany = contributionSalary * 0.23; // 23% social insurance for the company
+                healthInsuranceCompany = contributionSalary * 0.068; // 6.8% health insurance for the company
+                neto = salary; // No deductions from the employee's salary
+                companyCost = salary + socialInsuranceCompany + healthInsuranceCompany;
+                document.getElementById("results").innerHTML = `
+                    <h3>Rezultatet</h3>
+                    <p>Paga Bruto: ${salary.toFixed(2)} ALL</p>
+                    <p>Paga Neto: ${neto.toFixed(2)} ALL</p>
+                    <p>Shpenzime për Shoqërinë:</p>
+                    <ul>
+                        <li>Sigurime Shoqërore (Kompania): ${socialInsuranceCompany.toFixed(2)} ALL</li>
+                        <li>Sigurime Shëndetësore (Kompania): ${healthInsuranceCompany.toFixed(2)} ALL</li>
+                    </ul>
+                    <p>Shpenzime Totale për Shoqërinë: ${companyCost.toFixed(2)} ALL</p>
+                `;
+                return;
+            }
+
+            // Unified TAP calculation with exemption for salaries < 50,001 ALL
+            function calculateTAP(brutoSalary) {
+                let tap = 0;
+                if (brutoSalary > 50000) {
+                    if (brutoSalary > 200000) {
+                        tap += (brutoSalary - 200000) * 0.23;
+                        tap += (200000 - 30000) * 0.13;
+                    } else if (brutoSalary > 30000) {
+                        tap += (brutoSalary - 30000) * 0.13;
+                    }
+                }
+                return tap;
+            }
+
+            if (type === "brutoToNeto") {
+                TAP = calculateTAP(salary);
+
+                socialInsuranceEmployee = contributionSalary * 0.095; // 9.5% social insurance
+                healthInsuranceEmployee = contributionSalary * 0.017; // 1.7% health insurance
+                neto = salary - socialInsuranceEmployee - healthInsuranceEmployee - supplementalInsuranceEmployee - TAP;
+
+                socialInsuranceCompany = contributionSalary * 0.15; // 15% social insurance for the company
+                healthInsuranceCompany = contributionSalary * 0.017; // 1.7% health insurance for the company
+                companyCost = salary + socialInsuranceCompany + healthInsuranceCompany + supplementalInsuranceCompany;
+                bruto = salary;
+            } else if (type === "netoToBruto") {
+                // Reverse calculations for Neto to Bruto
+                bruto = salary / (1 - 0.095 - 0.017 - (employmentStatus === "miner" ? 0.02 : 0)); // Neto to bruto considering employee contributions
+                TAP = calculateTAP(bruto);
+
+                socialInsuranceEmployee = contributionSalary * 0.095;
+                healthInsuranceEmployee = contributionSalary * 0.017;
+                socialInsuranceCompany = contributionSalary * 0.15;
+                healthInsuranceCompany = contributionSalary * 0.017;
+                if (employmentStatus === "miner") {
+                    supplementalInsuranceEmployee = contributionSalary * 0.02;
+                    supplementalInsuranceCompany = contributionSalary * 0.03;
+                }
+                neto = bruto - socialInsuranceEmployee - healthInsuranceEmployee - supplementalInsuranceEmployee - TAP;
+                companyCost = bruto + socialInsuranceCompany + healthInsuranceCompany + supplementalInsuranceCompany;
+            }
+
+            document.getElementById("results").innerHTML = `
+                <h3>Rezultatet</h3>
+                <p>Paga Bruto: ${bruto.toFixed(2)} ALL</p>
+                <p>Paga Neto: ${neto.toFixed(2)} ALL</p>
+                <p>Kontribute nga Paga:</p>
+                <ul>
+                    <li>Sigurime Shoqërore (Punonjësi): ${socialInsuranceEmployee.toFixed(2)} ALL</li>
+                    <li>Sigurime Shëndetësore (Punonjësi): ${healthInsuranceEmployee.toFixed(2)} ALL</li>
+                    <li>Sigurime Suplementare (Punonjësi): ${supplementalInsuranceEmployee.toFixed(2)} ALL</li>
+                    <li>TAP: ${TAP.toFixed(2)} ALL</li>
+                </ul>
+                <p>Shpenzime për Shoqërinë:</p>
+                <ul>
+                    <li>Sigurime Shoqërore (Kompania): ${socialInsuranceCompany.toFixed(2)} ALL</li>
+                    <li>Sigurime Shëndetësore (Kompania): ${healthInsuranceCompany.toFixed(2)} ALL</li>
+                    <li>Sigurime Suplementare (Kompania): ${supplementalInsuranceCompany.toFixed(2)} ALL</li>
+                </ul>
+                <p>Shpenzime Totale për Shoqërinë: ${companyCost.toFixed(2)} ALL</p>
+            `;
+        }
+    </script>
+</body>
+</html>
